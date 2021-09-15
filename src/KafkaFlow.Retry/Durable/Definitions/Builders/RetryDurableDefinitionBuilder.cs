@@ -2,32 +2,28 @@
 {
     using System;
     using System.Collections.Generic;
-    using KafkaFlow;
+    using Dawn;
     using KafkaFlow.Configuration;
-    using KafkaFlow.Producers;
-    using KafkaFlow.Retry.Durable;
     using KafkaFlow.Retry.Durable.Compression;
     using KafkaFlow.Retry.Durable.Definitions;
     using KafkaFlow.Retry.Durable.Encoders;
-    using KafkaFlow.Retry.Durable.Polling;
     using KafkaFlow.Retry.Durable.Repository;
     using KafkaFlow.Retry.Durable.Repository.Adapters;
     using KafkaFlow.Retry.Durable.Serializers;
+    using Newtonsoft.Json;
 
     public class RetryDurableDefinitionBuilder
     {
-        private readonly IDependencyConfigurator dependencyConfigurator;
         private readonly List<Func<RetryContext, bool>> retryWhenExceptions = new List<Func<RetryContext, bool>>();
+        private JsonSerializerSettings jsonSerializerSettings = new JsonSerializerSettings();
         private Type messageType;
         private RetryDurableEmbeddedClusterDefinitionBuilder retryDurableEmbeddedClusterDefinitionBuilder;
-        private IRetryDurablePollingDefinition retryDurablePollingDefinition;
+        private RetryDurablePollingDefinition retryDurablePollingDefinition;
         private IRetryDurableQueueRepositoryProvider retryDurableRepositoryProvider;
-        private IRetryDurableRetryPlanBeforeDefinition retryDurableRetryPlanBeforeDefinition;
+        private RetryDurableRetryPlanBeforeDefinition retryDurableRetryPlanBeforeDefinition;
 
-        public RetryDurableDefinitionBuilder(IDependencyConfigurator dependencyConfigurator)
-        {
-            this.dependencyConfigurator = dependencyConfigurator;
-        }
+        internal RetryDurableDefinitionBuilder()
+        { }
 
         public RetryDurableDefinitionBuilder Handle<TException>()
             where TException : Exception
@@ -54,6 +50,12 @@
             this.retryDurableEmbeddedClusterDefinitionBuilder = new RetryDurableEmbeddedClusterDefinitionBuilder(cluster);
             configure(this.retryDurableEmbeddedClusterDefinitionBuilder);
 
+            return this;
+        }
+
+        public RetryDurableDefinitionBuilder WithMessageSerializeSettings(JsonSerializerSettings jsonSerializerSettings)
+        {
+            this.jsonSerializerSettings = jsonSerializerSettings;
             return this;
         }
 
@@ -88,63 +90,47 @@
             return this;
         }
 
-        internal IRetryDurableDefinition Build()
+        internal RetryDurableDefinition Build()
         {
-            var retryDurableDefinition =
-                   new RetryDurableDefinition(
-                       this.retryWhenExceptions,
-                       this.retryDurableRetryPlanBeforeDefinition,
-                       this.retryDurablePollingDefinition
-                   );
+            // TODO: Guard the exceptions and retry plan
+            Guard.Argument(this.retryDurableRepositoryProvider).NotNull("A repository should be defined");
+            Guard.Argument(this.messageType).NotNull("A message type should be defined");
 
-            this.retryDurableEmbeddedClusterDefinitionBuilder.WithMessageType(this.messageType);
-            this.retryDurableEmbeddedClusterDefinitionBuilder.Build();
+            var utf8Encoder = new Utf8Encoder();
+            var gzipCompressor = new GzipCompressor();
+            var newtonsoftJsonSerializer = new NewtonsoftJsonSerializer(this.jsonSerializerSettings);
+            var messageAdapter = new NewtonsoftJsonMessageAdapter(gzipCompressor, newtonsoftJsonSerializer, utf8Encoder);
+            var messageHeadersAdapter = new MessageHeadersAdapter();
 
-            this.dependencyConfigurator.AddSingleton<IRetryDurableDefinition>(retryDurableDefinition);
-            this.dependencyConfigurator.AddSingleton<IMessageHeadersAdapter>(new MessageHeadersAdapter());
-            this.dependencyConfigurator.AddSingleton<IGzipCompressor>(new GzipCompressor());
-            this.dependencyConfigurator.AddSingleton<IUtf8Encoder>(new Utf8Encoder());
-            this.dependencyConfigurator.AddSingleton<IProtobufNetSerializer>(new ProtobufNetSerializer());
-            this.dependencyConfigurator
-                .AddSingleton<IMessageAdapter>(
-                    resolver =>
-                        new MessageAdapter(
-                            resolver.Resolve<IGzipCompressor>(),
-                            resolver.Resolve<IProtobufNetSerializer>()));
+            var retryDurableQueueRepository =
+                new RetryDurableQueueRepository(
+                    this.retryDurableRepositoryProvider,
+                    new IUpdateRetryQueueItemHandler[]
+                    {
+                        new UpdateRetryQueueItemStatusHandler(this.retryDurableRepositoryProvider),
+                        new UpdateRetryQueueItemExecutionInfoHandler(this.retryDurableRepositoryProvider)
+                    },
+                    messageHeadersAdapter,
+                    messageAdapter,
+                    utf8Encoder,
+                    this.retryDurablePollingDefinition);
 
-            this.dependencyConfigurator
-                .AddSingleton<IRetryDurableQueueRepository>(
-                    resolver =>
-                        new RetryDurableQueueRepository(
-                            this.retryDurableRepositoryProvider,
-                            new IUpdateRetryQueueItemHandler[]
-                            {
-                                new UpdateRetryQueueItemStatusHandler(this.retryDurableRepositoryProvider),
-                                new UpdateRetryQueueItemExecutionInfoHandler(this.retryDurableRepositoryProvider)
-                            },
-                            resolver.Resolve<IMessageHeadersAdapter>(),
-                            resolver.Resolve<IMessageAdapter>(),
-                            resolver.Resolve<IUtf8Encoder>(),
-                            this.retryDurablePollingDefinition));
-
-            this.dependencyConfigurator
-                .AddSingleton<IQueueTrackerCoordinator>(
-                    resolver =>
-                        new QueueTrackerCoordinator(
-                            new QueueTrackerFactory(
-                                resolver.Resolve<IRetryDurableQueueRepository>(),
-                                resolver.Resolve<ILogHandler>(),
-                                resolver.Resolve<IMessageHeadersAdapter>(),
-                                resolver.Resolve<IMessageAdapter>(),
-                                resolver.Resolve<IUtf8Encoder>(),
-                                resolver.Resolve<IProducerAccessor>().GetProducer(RetryDurableConstants.EmbeddedProducerName),
-                                this.retryDurablePollingDefinition
-                            ),
-                            this.retryDurablePollingDefinition
-                        )
+            this.retryDurableEmbeddedClusterDefinitionBuilder
+                .Build(
+                    this.messageType,
+                    retryDurableQueueRepository,
+                    utf8Encoder,
+                    newtonsoftJsonSerializer,
+                    messageAdapter,
+                    messageHeadersAdapter,
+                    this.retryDurablePollingDefinition
                 );
 
-            return retryDurableDefinition;
+            return new RetryDurableDefinition(
+                this.retryWhenExceptions,
+                this.retryDurableRetryPlanBeforeDefinition,
+                retryDurableQueueRepository
+            );
         }
     }
 }

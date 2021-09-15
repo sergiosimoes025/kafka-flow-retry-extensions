@@ -4,7 +4,6 @@
     using KafkaFlow;
     using KafkaFlow.Configuration;
     using KafkaFlow.Retry.Durable;
-    using KafkaFlow.Retry.Durable.Repository;
     using KafkaFlow.Retry.Forever;
     using KafkaFlow.Retry.Simple;
 
@@ -14,15 +13,14 @@
                this IConsumerMiddlewareConfigurationBuilder middlewareBuilder,
                Action<RetryDurableDefinitionBuilder> configure)
         {
-            var retryDurableDefinitionBuilder = new RetryDurableDefinitionBuilder(middlewareBuilder.DependencyConfigurator);
+            var retryDurableDefinitionBuilder = new RetryDurableDefinitionBuilder();
             configure(retryDurableDefinitionBuilder);
-            var retryDurableDefinitionBuild = retryDurableDefinitionBuilder.Build();
+            var retryDurableDefinition = retryDurableDefinitionBuilder.Build();
 
             return middlewareBuilder.Add(
                 resolver => new RetryDurableMiddleware(
                     resolver.Resolve<ILogHandler>(),
-                    resolver.Resolve<IRetryDurableQueueRepository>(),
-                    retryDurableDefinitionBuild
+                    retryDurableDefinition
                 ));
         }
 

@@ -2,6 +2,7 @@
 {
     using System;
     using System.Collections.Generic;
+    using System.Diagnostics.CodeAnalysis;
     using System.Linq;
     using System.Threading.Tasks;
     using Dawn;
@@ -18,6 +19,7 @@
     using MongoDB.Driver;
     using MongoDB.Driver.Linq;
 
+    [ExcludeFromCodeCoverage]
     internal sealed class RetryQueueDataProvider : IRetryDurableQueueRepositoryProvider
     {
         private readonly DbContext dbContext;
@@ -69,7 +71,7 @@
             var itemsFilterBuilder = this.dbContext.RetryQueueItems.GetFilters();
 
             var itemsFilter = itemsFilterBuilder.Eq(i => i.RetryQueueId, input.QueueId)
-                            & itemsFilterBuilder.In(i => i.Status, new RetryQueueItemStatus[] { RetryQueueItemStatus.InRetry })
+                            & itemsFilterBuilder.In(i => i.Status, new RetryQueueItemStatus[] { RetryQueueItemStatus.Waiting, RetryQueueItemStatus.InRetry })
                             & itemsFilterBuilder.Gt(i => i.Sort, input.Sort);
 
             var itemsDbo = await this.dbContext.RetryQueueItems.GetAsync(itemsFilter).ConfigureAwait(false);
