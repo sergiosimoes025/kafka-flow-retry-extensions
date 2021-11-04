@@ -18,7 +18,7 @@
             RetrySimpleDefinition retrySimpleDefinition)
         {
             Guard.Argument(logHandler).NotNull();
-            Guard.Argument(kafkaRetryDefinition).NotNull();
+            Guard.Argument(retrySimpleDefinition).NotNull();
 
             this.logHandler = logHandler;
             this.retrySimpleDefinition = retrySimpleDefinition;

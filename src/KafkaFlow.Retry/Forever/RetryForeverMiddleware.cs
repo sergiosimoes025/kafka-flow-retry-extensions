@@ -18,7 +18,7 @@
             RetryForeverDefinition retryForeverDefinition)
         {
             Guard.Argument(logHandler).NotNull();
-            Guard.Argument(kafkaRetryForeverDefinition).NotNull();
+            Guard.Argument(retryForeverDefinition).NotNull();
 
             this.logHandler = logHandler;
             this.retryForeverDefinition = retryForeverDefinition;
