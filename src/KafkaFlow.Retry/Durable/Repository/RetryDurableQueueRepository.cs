@@ -59,6 +59,10 @@
               .ExecuteAsync(
                 async () =>
                 {
+                    var messageKey = context.Message.Key is null
+                        ? Guid.NewGuid().ToString()
+                        : this.utf8Encoder.Decode((byte[])context.Message.Key);
+
                     return await this.AddIfQueueExistsAsync(
                         context,
                         new SaveToQueueInput(
@@ -72,7 +76,7 @@
                                 this.messageHeadersAdapter.AdaptMessageHeadersToRepository(context.Headers)
                             ),
                             this.retryDurablePollingDefinition.Id,
-                            $"{this.retryDurablePollingDefinition.Id}-{this.utf8Encoder.Decode((byte[])context.Message.Key)}",
+                            $"{this.retryDurablePollingDefinition.Id}-{messageKey}",
                             RetryQueueStatus.Active,
                             RetryQueueItemStatus.Waiting,
                             SeverityLevel.Unknown,
@@ -159,6 +163,9 @@
                     async () =>
                     {
                         var refDate = DateTime.UtcNow;
+                        var messageKey = context.Message.Key is null
+                        ? Guid.NewGuid().ToString()
+                        : this.utf8Encoder.Decode((byte[])context.Message.Key);
 
                         return await this.SaveToQueueAsync(context,
                            new SaveToQueueInput(
@@ -172,7 +179,7 @@
                                     this.messageHeadersAdapter.AdaptMessageHeadersToRepository(context.Headers)
                                 ),
                             this.retryDurablePollingDefinition.Id,
-                            $"{this.retryDurablePollingDefinition.Id}-{this.utf8Encoder.Decode((byte[])context.Message.Key)}",
+                            $"{this.retryDurablePollingDefinition.Id}-{messageKey}",
                             RetryQueueStatus.Active,
                             RetryQueueItemStatus.Waiting,
                             SeverityLevel.Unknown,
