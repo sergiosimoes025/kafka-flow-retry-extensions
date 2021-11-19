@@ -59,10 +59,6 @@
               .ExecuteAsync(
                 async () =>
                 {
-                    var messageKey = context.Message.Key is null
-                        ? Guid.NewGuid().ToString()
-                        : this.utf8Encoder.Decode((byte[])context.Message.Key);
-
                     return await this.AddIfQueueExistsAsync(
                         context,
                         new SaveToQueueInput(
@@ -76,7 +72,7 @@
                                 this.messageHeadersAdapter.AdaptMessageHeadersToRepository(context.Headers)
                             ),
                             this.retryDurablePollingDefinition.Id,
-                            $"{this.retryDurablePollingDefinition.Id}-{messageKey}",
+                            GetQueueGroupKey(context.Message.Key),
                             RetryQueueStatus.Active,
                             RetryQueueItemStatus.Waiting,
                             SeverityLevel.Unknown,
@@ -163,9 +159,6 @@
                     async () =>
                     {
                         var refDate = DateTime.UtcNow;
-                        var messageKey = context.Message.Key is null
-                        ? Guid.NewGuid().ToString()
-                        : this.utf8Encoder.Decode((byte[])context.Message.Key);
 
                         return await this.SaveToQueueAsync(context,
                            new SaveToQueueInput(
@@ -179,7 +172,7 @@
                                     this.messageHeadersAdapter.AdaptMessageHeadersToRepository(context.Headers)
                                 ),
                             this.retryDurablePollingDefinition.Id,
-                            $"{this.retryDurablePollingDefinition.Id}-{messageKey}",
+                            GetQueueGroupKey(context.Message.Key),
                             RetryQueueStatus.Active,
                             RetryQueueItemStatus.Waiting,
                             SeverityLevel.Unknown,
@@ -284,6 +277,15 @@
             kafkaException.Data.Add(nameof(input.Sort), input.Sort);
 
             return kafkaException;
+        }
+
+        private string GetQueueGroupKey(object messageKey)
+        {
+            var key = messageKey is null
+                        ? Guid.NewGuid().ToString()
+                        : this.utf8Encoder.Decode((byte[])messageKey);
+
+            return $"{this.retryDurablePollingDefinition.Id}-{key}";
         }
 
         private async Task<SaveToQueueResult> SaveToQueueAsync(IMessageContext context, SaveToQueueInput input)
