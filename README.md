@@ -1,7 +1,9 @@
 # KafkaFlow Retry Extensions
-KafkaFlow Retry is a .NET framework to retry messages on consumers, simple to use.
+[![Codacy Badge](https://app.codacy.com/project/badge/Grade/2a86b45f0ec2487fb63dfd581071465a)](https://www.codacy.com/gh/Farfetch/kafka-flow-retry-extensions/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=Farfetch/kafka-flow-retry-extensions&amp;utm_campaign=Badge_Grade)
 
-KafkaFlow Retry is an extention of [Kafka Flow](https://github.com/Farfetch/kafka-flow).
+KafkaFlow Retry is a .NET framework to implement easy resilience on consumers.
+
+KafkaFlow Retry is an extension of [Kafka Flow](https://github.com/Farfetch/kafka-flow).
 
 ## Resilience policies
 
@@ -134,8 +136,9 @@ Read the [Contributing guidelines](CONTRIBUTING.md)
 ## Maintainers
 
 -   [Bruno Gomes](https://github.com/brunohfgomes)
--   [Carlos Goias](https://github.com/carlosgoias)
+-   [Carlos Miranda](https://github.com/carlosgoias)
 -   [Fernando Marins](https://github.com/fernando-a-marins)
+-   [Leandro Magalhães](https://github.com/spookylsm)
 -   [Luís Garcês](https://github.com/luispfgarces)
 -   [Martinho Novais](https://github.com/martinhonovais)
 -   [Rodrigo Belo](https://github.com/rodrigobelo)
