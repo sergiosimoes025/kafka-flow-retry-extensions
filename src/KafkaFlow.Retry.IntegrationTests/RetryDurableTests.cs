@@ -71,6 +71,14 @@ namespace KafkaFlow.Retry.IntegrationTests
                 1,
                 true
             };
+            yield return new object[]
+            {
+                RepositoryType.SqlServer,
+                typeof(IMessageProducer<RetryDurableLatestConsumptionSqlServerProducer>),
+                typeof(RetryDurableLatestConsumptionPhysicalStorageAssert),
+                1,
+                true
+            };
         }
 
         [Theory]
@@ -89,11 +97,8 @@ namespace KafkaFlow.Retry.IntegrationTests
             var numberOfTimesThatEachMessageIsTriedDuringDurable = 2;
             var producer = this.serviceProvider.GetRequiredService(producerType) as IMessageProducer;
             var physicalStorageAssert = this.serviceProvider.GetRequiredService(physicalStorageType) as IPhysicalStorageAssert;
-            var messages = this.fixture
-                                .Build<RetryDurableTestMessage>()
-                                .With(m => m.Key, withNullPartitionKey ? null : $"partition-key-{DateTime.UtcNow.ToLongDateString()}")
-                                .CreateMany(numberOfMessages)
-                                .ToList();
+            var messages = this.fixture.CreateMany<RetryDurableTestMessage>(numberOfMessages).ToList();
+
             await this.repositoryProvider.GetRepositoryOfType(repositoryType).CleanDatabaseAsync().ConfigureAwait(false);
             // Act
             messages.ForEach(
@@ -101,7 +106,7 @@ namespace KafkaFlow.Retry.IntegrationTests
                 {
                     for (int i = 0; i < numberOfMessagesByEachSameKey; i++)
                     {
-                        producer.Produce(m.Key, m);
+                        producer.Produce(withNullPartitionKey ? null : m.Key, m);
                     }
                 });
 
