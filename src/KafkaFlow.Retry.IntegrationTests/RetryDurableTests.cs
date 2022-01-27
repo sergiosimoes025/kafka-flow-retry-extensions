@@ -88,7 +88,7 @@ namespace KafkaFlow.Retry.IntegrationTests
             Type producerType,
             Type physicalStorageType,
             int numberOfTimesThatEachMessageIsTriedWhenDone,
-            bool withNullPartitionKey)
+            bool withEmptyPartitionKey)
         {
             // Arrange
             var numberOfMessages = 5;
@@ -106,7 +106,7 @@ namespace KafkaFlow.Retry.IntegrationTests
                 {
                     for (int i = 0; i < numberOfMessagesByEachSameKey; i++)
                     {
-                        producer.Produce(withNullPartitionKey ? null : m.Key, m);
+                        producer.Produce(withEmptyPartitionKey ? string.Empty : m.Key, m);
                     }
                 });
 
