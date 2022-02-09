@@ -1,11 +1,11 @@
 ﻿namespace KafkaFlow.Retry.IntegrationTests.Core.Storages
 {
+    using KafkaFlow.Retry.IntegrationTests.Core.Messages;
     using System;
     using System.Collections.Concurrent;
     using System.Diagnostics;
     using System.Linq;
     using System.Threading.Tasks;
-    using KafkaFlow.Retry.IntegrationTests.Core.Messages;
     using Xunit;
 
     internal static class InMemoryAuxiliarStorage<T> where T : ITestMessage
@@ -24,7 +24,7 @@
         {
             var start = DateTime.Now;
 
-            while (Message.Count(x => x.Key == message.Key && x.Value == message.Value) != count)
+            while (Message.Count(x => (message.Key is null || x.Key == message.Key) && x.Value == message.Value) != count)
             {
                 if (DateTime.Now.Subtract(start).TotalSeconds > TimeoutSec && !Debugger.IsAttached)
                 {
