@@ -10,10 +10,12 @@
     using KafkaFlow.Retry.Durable.Repository.Actions.Update;
     using KafkaFlow.Retry.Durable.Repository.Adapters;
     using KafkaFlow.Retry.Durable.Repository.Model;
+    using Newtonsoft.Json;
     using Polly;
     using System;
     using System.Collections.Generic;
     using System.Linq;
+    using System.Text;
     using System.Threading.Tasks;
 
     internal class RetryDurableQueueRepository : IRetryDurableQueueRepository
@@ -62,16 +64,8 @@
                     return await this.AddIfQueueExistsAsync(
                         context,
                         new SaveToQueueInput(
-                            new RetryQueueItemMessage(
-                                context.ConsumerContext.Topic,
-                                (byte[])context.Message.Key,
-                                this.messageAdapter.AdaptMessageToRepository(context.Message.Value),
-                                context.ConsumerContext.Partition,
-                                context.ConsumerContext.Offset,
-                                context.ConsumerContext.MessageTimestamp,
-                                this.messageHeadersAdapter.AdaptMessageHeadersToRepository(context.Headers)
-                            ),
-                            this.retryDurablePollingDefinition.Id,
+                            CreateRetryQueueItemMessage(context),
+                            retryDurablePollingDefinition.Id,
                             GetQueueGroupKey(context.Message.Key),
                             RetryQueueStatus.Active,
                             RetryQueueItemStatus.Waiting,
@@ -162,25 +156,17 @@
 
                         return await this.SaveToQueueAsync(context,
                            new SaveToQueueInput(
-                                new RetryQueueItemMessage(
-                                    context.ConsumerContext.Topic,
-                                    (byte[])context.Message.Key,
-                                    this.messageAdapter.AdaptMessageToRepository(context.Message.Value),
-                                    context.ConsumerContext.Partition,
-                                    context.ConsumerContext.Offset,
-                                    context.ConsumerContext.MessageTimestamp,
-                                    this.messageHeadersAdapter.AdaptMessageHeadersToRepository(context.Headers)
-                                ),
-                            this.retryDurablePollingDefinition.Id,
-                            GetQueueGroupKey(context.Message.Key),
-                            RetryQueueStatus.Active,
-                            RetryQueueItemStatus.Waiting,
-                            SeverityLevel.Unknown,
-                            refDate,
-                            refDate,
-                            refDate,
-                            0,
-                            description
+                                CreateRetryQueueItemMessage(context),
+                                this.retryDurablePollingDefinition.Id,
+                                GetQueueGroupKey(context.Message.Key),
+                                RetryQueueStatus.Active,
+                                RetryQueueItemStatus.Waiting,
+                                SeverityLevel.Unknown,
+                                refDate,
+                                refDate,
+                                refDate,
+                                0,
+                                description
                             )
                        ).ConfigureAwait(false);
                     }
@@ -255,6 +241,28 @@
 
                 throw kafkaException;
             }
+        }
+
+        private RetryQueueItemMessage CreateRetryQueueItemMessage(IMessageContext context)
+        {
+            var partitionKey = default(byte[]);
+            if (context.Message.Key is object)
+            {
+                partitionKey = Encoding.ASCII.GetBytes(JsonConvert.SerializeObject(context.Message.Key));
+            }
+
+            var message = this.messageAdapter.AdaptMessageToRepository(context.Message.Value);
+            var headers = this.messageHeadersAdapter.AdaptMessageHeadersToRepository(context.Headers);
+
+            return new RetryQueueItemMessage(
+                                            context.ConsumerContext.Topic,
+                                            partitionKey,
+                                            message,
+                                            context.ConsumerContext.Partition,
+                                            context.ConsumerContext.Offset,
+                                            context.ConsumerContext.MessageTimestamp,
+                                            headers
+                                        );
         }
 
         private RetryDurableException GetCheckQueueException(string message, QueuePendingItemsInput input)
