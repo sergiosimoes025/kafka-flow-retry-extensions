@@ -10,6 +10,7 @@ namespace KafkaFlow.Retry.IntegrationTests
     using Microsoft.Extensions.DependencyInjection;
     using System;
     using System.Collections.Generic;
+    using System.Linq;
     using System.Threading.Tasks;
     using Xunit;
 
@@ -30,19 +31,17 @@ namespace KafkaFlow.Retry.IntegrationTests
 
         public static IEnumerable<object[]> NullKeyScenarios()
         {
-            //yield return new object[]
-            //{
-            //    RepositoryType.MongoDb,
-            //    typeof(IMessageProducer<RetryDurableLatestConsumptionMongoDbProducer>),
-            //    typeof(RetryDurableLatestConsumptionPhysicalStorageAssert),
-            //    1
-            //};
+            yield return new object[]
+            {
+                RepositoryType.MongoDb,
+                typeof(IMessageProducer<RetryDurableLatestConsumptionMongoDbProducer>),
+                typeof(RetryDurableLatestConsumptionPhysicalStorageAssert)
+            };
             yield return new object[]
             {
                 RepositoryType.SqlServer,
                 typeof(IMessageProducer<RetryDurableLatestConsumptionSqlServerProducer>),
-                typeof(RetryDurableLatestConsumptionPhysicalStorageAssert),
-                1
+                typeof(RetryDurableLatestConsumptionPhysicalStorageAssert)
             };
         }
 
@@ -51,22 +50,23 @@ namespace KafkaFlow.Retry.IntegrationTests
         internal async Task NullKeyRetryDurableTest(
             RepositoryType repositoryType,
             Type producerType,
-            Type physicalStorageType,
-            int numberOfTimesThatEachMessageIsTriedWhenDone)
+            Type physicalStorageType)
         {
             // Arrange
+            var numberOfTimesThatEachMessageIsTriedWhenDone = 1;
             var numberOfMessages = 1;
-            var numberOfMessagesByEachSameKey = 2;
+            var numberOfMessagesByEachSameKey = 1;
             var numberOfTimesThatEachMessageIsTriedBeforeDurable = 1;
             var numberOfTimesThatEachMessageIsTriedDuringDurable = 2;
             var producer = this.serviceProvider.GetRequiredService(producerType) as IMessageProducer;
             var physicalStorageAssert = this.serviceProvider.GetRequiredService(physicalStorageType) as IPhysicalStorageAssert;
-            //var messages = this.fixture.CreateMany<RetryDurableTestMessage>(numberOfMessages).ToList();
-            var messages = new List<RetryDurableTestMessage>
-            {
-                new RetryDurableTestMessage{ Value="RetryDurableTestMessage_1" }
-            };
+            var messages = this.fixture.Build<RetryDurableTestMessage>()
+                                    .With(messsage => messsage.Key, string.Empty)
+                                    .CreateMany(numberOfMessages)
+                                    .ToList();
+
             await this.repositoryProvider.GetRepositoryOfType(repositoryType).CleanDatabaseAsync().ConfigureAwait(false);
+
             // Act
             messages.ForEach(
                 message =>
@@ -105,15 +105,15 @@ namespace KafkaFlow.Retry.IntegrationTests
             InMemoryAuxiliarStorage<RetryDurableTestMessage>.ThrowException = false;
             InMemoryAuxiliarStorage<RetryDurableTestMessage>.Clear();
 
-            //foreach (var message in messages)
-            //{
-            //    await InMemoryAuxiliarStorage<RetryDurableTestMessage>.AssertCountMessageAsync(message, numberOfTimesThatEachMessageIsTriedWhenDone).ConfigureAwait(false);
-            //}
+            foreach (var message in messages)
+            {
+                await InMemoryAuxiliarStorage<RetryDurableTestMessage>.AssertCountMessageAsync(message, numberOfTimesThatEachMessageIsTriedWhenDone).ConfigureAwait(false);
+            }
 
-            //foreach (var message in messages)
-            //{
-            //    await physicalStorageAssert.AssertRetryDurableMessageDoneAsync(repositoryType, message).ConfigureAwait(false);
-            //}
+            foreach (var message in messages)
+            {
+                await physicalStorageAssert.AssertRetryDurableMessageDoneAsync(repositoryType, message).ConfigureAwait(false);
+            }
         }
     }
 }
