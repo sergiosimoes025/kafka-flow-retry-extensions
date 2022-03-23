@@ -1,6 +1,8 @@
 namespace KafkaFlow.Retry.IntegrationTests
 {
-    using AutoFixture;
+    using System;
+    using System.Collections.Generic;
+    using System.Threading.Tasks;
     using KafkaFlow.Retry.IntegrationTests.Core.Bootstrappers.Fixtures;
     using KafkaFlow.Retry.IntegrationTests.Core.Messages;
     using KafkaFlow.Retry.IntegrationTests.Core.Producers;
@@ -8,16 +10,11 @@ namespace KafkaFlow.Retry.IntegrationTests
     using KafkaFlow.Retry.IntegrationTests.Core.Storages.Assertion;
     using KafkaFlow.Retry.IntegrationTests.Core.Storages.Repositories;
     using Microsoft.Extensions.DependencyInjection;
-    using System;
-    using System.Collections.Generic;
-    using System.Linq;
-    using System.Threading.Tasks;
     using Xunit;
 
     [Collection("BootstrapperHostCollection")]
     public class EmptyPartitionKeyRetryDurableTests
     {
-        private readonly Fixture fixture = new Fixture();
         private readonly IRepositoryProvider repositoryProvider;
         private readonly IServiceProvider serviceProvider;
 
@@ -53,17 +50,18 @@ namespace KafkaFlow.Retry.IntegrationTests
             Type physicalStorageType)
         {
             // Arrange
-            var numberOfMessagesToBeProduced = 1;
+            var numberOfMessagesToBeProduced = 5;
             var numberOfTimesThatEachMessageIsTriedWhenDone = 1;
             var numberOfMessagesByEachSameKey = 1;
-            var numberOfTimesThatEachMessageIsTriedBeforeDurable = 1;
+            var numberOfTimesThatEachMessageIsTriedBeforeDurable = 4;
             var numberOfTimesThatEachMessageIsTriedDuringDurable = 2;
             var producer = this.serviceProvider.GetRequiredService(producerType) as IMessageProducer;
             var physicalStorageAssert = this.serviceProvider.GetRequiredService(physicalStorageType) as IPhysicalStorageAssert;
-            var messages = this.fixture.Build<RetryDurableTestMessage>()
-                                    .With(messsage => messsage.Key, string.Empty)
-                                    .CreateMany(numberOfMessagesToBeProduced)
-                                    .ToList();
+            var messages = new List<RetryDurableTestMessage>();
+            for (int i = 0; i < numberOfMessagesToBeProduced; i++)
+            {
+                messages.Add(new RetryDurableTestMessage { Key = string.Empty, Value = $"Message_{i + 1}" });
+            }
 
             await this.repositoryProvider.GetRepositoryOfType(repositoryType).CleanDatabaseAsync().ConfigureAwait(false);
 
