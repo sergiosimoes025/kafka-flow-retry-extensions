@@ -1,5 +1,10 @@
 ﻿namespace KafkaFlow.Retry.Durable.Repository
 {
+    using System;
+    using System.Collections.Generic;
+    using System.Linq;
+    using System.Text;
+    using System.Threading.Tasks;
     using Dawn;
     using KafkaFlow.Retry.Durable;
     using KafkaFlow.Retry.Durable.Common;
@@ -12,11 +17,6 @@
     using KafkaFlow.Retry.Durable.Repository.Model;
     using Newtonsoft.Json;
     using Polly;
-    using System;
-    using System.Collections.Generic;
-    using System.Linq;
-    using System.Text;
-    using System.Threading.Tasks;
 
     internal class RetryDurableQueueRepository : IRetryDurableQueueRepository
     {
@@ -292,15 +292,11 @@
             string messageKeyAsString;
             if (messageKey is null)
             {
-                messageKeyAsString = Guid.NewGuid().ToString();
+                messageKeyAsString = string.Empty;
             }
             else
             {
-                messageKeyAsString = this.utf8Encoder.Decode((byte[])messageKey);
-
-                messageKeyAsString = string.IsNullOrWhiteSpace(messageKeyAsString)
-                                    ? Guid.NewGuid().ToString()
-                                    : messageKeyAsString;
+                messageKeyAsString = utf8Encoder.Decode((byte[])messageKey);
             }
 
             return $"{this.retryDurablePollingDefinition.Id}-{messageKeyAsString}";
