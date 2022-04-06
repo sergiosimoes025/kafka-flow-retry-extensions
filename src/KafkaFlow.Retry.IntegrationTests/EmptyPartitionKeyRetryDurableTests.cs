@@ -52,9 +52,9 @@ namespace KafkaFlow.Retry.IntegrationTests
             // Arrange
             var numberOfMessagesToBeProduced = 2;
             var numberOfTimesThatEachMessageIsTriedWhenDone = 1;
-            var numberOfMessagesByEachSameKey = 1;
+            var numberOfMessagesByEachSameKey = 2;
             var numberOfTimesThatEachMessageIsTriedBeforeDurable = 4;
-            var numberOfTimesThatEachMessageIsTriedDuringDurable = 1;
+            var numberOfTimesThatEachMessageIsTriedDuringDurable = 2;
             var producer = this.serviceProvider.GetRequiredService(producerType) as IMessageProducer;
             var physicalStorageAssert = this.serviceProvider.GetRequiredService(physicalStorageType) as IPhysicalStorageAssert;
             var messages = new List<RetryDurableTestMessage>();
@@ -78,12 +78,12 @@ namespace KafkaFlow.Retry.IntegrationTests
                 .AssertCountMessageAsync(messageToValidate, numberOfTimesThatEachMessageIsTriedBeforeDurable)
                 .ConfigureAwait(false);
 
-            //foreach (var message in messages)
-            //{
-            //    await physicalStorageAssert
-            //        .AssertRetryDurableMessageCreationAsync(repositoryType, message, numberOfMessagesByEachSameKey)
-            //        .ConfigureAwait(false);
-            //}
+            foreach (var message in messages)
+            {
+                await physicalStorageAssert
+                    .AssertRetryDurableMessageCreationAsync(repositoryType, message, numberOfMessagesByEachSameKey)
+                    .ConfigureAwait(false);
+            }
 
             // Assert - Retrying
             InMemoryAuxiliarStorage<RetryDurableTestMessage>.Clear();
@@ -92,12 +92,12 @@ namespace KafkaFlow.Retry.IntegrationTests
                 .AssertCountMessageAsync(messageToValidate, numberOfTimesThatEachMessageIsTriedDuringDurable)
                 .ConfigureAwait(false);
 
-            //foreach (var message in messages)
-            //{
-            //    await physicalStorageAssert
-            //        .AssertRetryDurableMessageRetryingAsync(repositoryType, message, numberOfTimesThatEachMessageIsTriedDuringDurable)
-            //        .ConfigureAwait(false);
-            //}
+            foreach (var message in messages)
+            {
+                await physicalStorageAssert
+                    .AssertRetryDurableMessageRetryingAsync(repositoryType, message, numberOfTimesThatEachMessageIsTriedDuringDurable)
+                    .ConfigureAwait(false);
+            }
 
             // Assert - Done
             InMemoryAuxiliarStorage<RetryDurableTestMessage>.ThrowException = false;
@@ -110,12 +110,12 @@ namespace KafkaFlow.Retry.IntegrationTests
                     .ConfigureAwait(false);
             }
 
-            //foreach (var message in messages)
-            //{
-            //    await physicalStorageAssert
-            //        .AssertRetryDurableMessageDoneAsync(repositoryType, message)
-            //        .ConfigureAwait(false);
-            //}
+            foreach (var message in messages)
+            {
+                await physicalStorageAssert
+                    .AssertRetryDurableMessageDoneAsync(repositoryType, message)
+                    .ConfigureAwait(false);
+            }
         }
     }
 }
